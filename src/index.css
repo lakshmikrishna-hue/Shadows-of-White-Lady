@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+:root {
+  --palace-void: #0a0c16;
+  --palace-slate: #13182a;
+  --lantern-gold: #fbbf24;
+  --jade-elixir: #10b981;
+  --scroll-azure: #38bdf8;
+  --lotus-pink: #f472b6;
+  --frost-cyan: #a5f3fc;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--palace-void);
+  color: #f8fafc;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.font-wuxia {
+  font-family: 'Cinzel', Georgia, serif;
+}
+
+.font-hanzi {
+  font-family: 'Noto Serif SC', serif;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-text-stroke {
+  paint-order: stroke fill;
+  text-shadow: 0 2px 6px rgba(4, 6, 14, 0.92), 0 0 1px rgba(4, 6, 14, 0.95);
+}

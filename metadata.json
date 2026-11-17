@@ -1,0 +1,6 @@
+{
+  "name": "Shadows of the White Lady",
+  "description": "An epic 3D Wuxia fantasy action-adventure game where three rune-infused heroes battle shadow assassins and the ethereal White Lady in a mist-shrouded imperial courtyard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
