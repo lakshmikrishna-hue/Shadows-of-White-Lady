@@ -138,3 +138,5 @@ NODE_ENV=production npm start
 ├── tsconfig.json
 └── vite.config.ts
 ```
+##Credits
+Build using Google Gemini and Google AI Studio 🌿
