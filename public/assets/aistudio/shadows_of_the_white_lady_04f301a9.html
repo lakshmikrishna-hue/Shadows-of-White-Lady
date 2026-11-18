@@ -1,0 +1,1603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Shadows of the White Lady 3D — Discover the Essence of Medicine</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js r128 for 3D Wuxia Visualization & Articulated Characters -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Tone.js for atmospheric wuxia sound synthesis -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- Google Fonts: Cinzel & Noto Serif SC for Wuxia/Palace Aesthetic -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Noto+Serif+SC:wght@500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --palace-dark: #070a12;
+            --lantern-gold: #fbbf24;
+            --jade-glow: #10b981;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--palace-dark);
+            color: #f8fafc;
+            overflow: hidden;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .font-wuxia { font-family: 'Cinzel', serif; }
+        .font-hanzi { font-family: 'Noto Serif SC', serif; }
+
+        /* Palace Glassmorphism & Borders */
+        .wuxia-panel {
+            background: linear-gradient(145deg, rgba(15, 23, 42, 0.82), rgba(7, 10, 18, 0.90));
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(251, 191, 36, 0.32);
+            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+        }
+
+        .wuxia-btn {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .wuxia-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(251, 191, 36, 0.35);
+        }
+        .wuxia-btn:active:not(:disabled) {
+            transform: translateY(1px);
+        }
+
+        /* Full-Screen 3D WebGL Canvas */
+        #three-canvas {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            z-index: 0;
+            cursor: grab;
+        }
+        #three-canvas:active {
+            cursor: grabbing;
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #070a12; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col justify-between">
+
+    <!-- Full-Viewport 3D Three.js Scene -->
+    <canvas id="three-canvas"></canvas>
+
+    <!-- Top Header / Palace HUD -->
+    <header class="relative z-30 w-full px-3 sm:px-5 py-2.5 border-b border-amber-500/25 bg-slate-950/75 backdrop-blur-md flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-emerald-500/30 to-indigo-600/30 border border-amber-400/60 flex items-center justify-center shadow-[0_0_15px_rgba(251,191,36,0.35)]">
+                <span class="font-hanzi text-amber-300 text-base sm:text-lg font-bold">藥</span>
+            </div>
+            <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                    <h1 class="font-wuxia text-sm sm:text-lg font-bold tracking-wider text-amber-200 drop-shadow">
+                        SHADOWS OF THE WHITE LADY <span class="text-cyan-300">3D</span>
+                    </h1>
+                    <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/40">
+                        Google Game Night
+                    </span>
+                </div>
+                <p class="text-[11px] text-slate-300 italic">
+                    "Discover the essence of medicine" • <span id="stage-subtitle" class="not-italic text-emerald-400 font-semibold">Stage I: 3D Misty Bamboo Forest</span>
+                </p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <!-- Camera Orbit Hint -->
+            <div class="hidden md:flex px-2.5 py-1.5 rounded-xl wuxia-panel items-center gap-1.5 text-[11px] text-slate-300 border-slate-600/40">
+                <span>🎥</span>
+                <span>Drag 3D View to Orbit • Scroll to Zoom</span>
+            </div>
+
+            <!-- Shared Squad Vitality Badge -->
+            <div class="px-2.5 py-1.5 rounded-xl wuxia-panel flex items-center gap-1.5 border-emerald-500/40">
+                <span class="text-xs sm:text-sm">💚</span>
+                <div class="text-xs">
+                    <span class="text-slate-400 hidden sm:inline">Squad HP:</span>
+                    <strong id="global-hp-label" class="font-mono text-emerald-300">200 / 200</strong>
+                </div>
+            </div>
+
+            <!-- Run Timer -->
+            <div class="px-2.5 py-1.5 rounded-xl wuxia-panel flex items-center gap-1.5 border-cyan-500/40">
+                <span class="text-xs sm:text-sm">⏳</span>
+                <span id="run-timer" class="font-mono text-xs text-cyan-200">00:00</span>
+            </div>
+
+            <!-- Sound Toggle -->
+            <button id="sound-toggle" class="p-2 rounded-xl wuxia-panel text-amber-300 hover:text-amber-200 text-xs flex items-center" title="Toggle Guqin & Wind Chimes">
+                <svg id="sound-icon-off" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" /></svg>
+                <svg id="sound-icon-on" class="w-4 h-4 hidden text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
+            </button>
+
+            <!-- Codex & Stage Jump Button -->
+            <button id="lore-btn" class="p-2 rounded-xl wuxia-panel text-cyan-300 hover:text-cyan-200 text-xs flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                <span class="hidden sm:inline">Codex</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- =========================================================================
+         STAGE I HUD OVERLAY: 3D MISTY BAMBOO FOREST (Arcade Reflexes with Maomi)
+         ========================================================================= -->
+    <main id="stage-1-view" class="relative z-20 flex-1 w-full max-w-4xl mx-auto px-3 sm:px-6 py-3 flex flex-col justify-between pointer-events-none">
+        <!-- Top Stage I Status Card -->
+        <div class="w-full wuxia-panel rounded-2xl p-3 flex flex-wrap items-center justify-between gap-3 border-emerald-500/40 pointer-events-auto">
+            <div class="flex items-center gap-2.5">
+                <div class="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-xl">🧺</div>
+                <div>
+                    <span class="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Player 1 • Maomi (3D Forest Sprint)</span>
+                    <h2 class="font-wuxia text-sm sm:text-base font-bold text-white">Stage I: The Misty Bamboo Forest</h2>
+                    <p class="text-[11px] text-slate-300">Move Maomi in 3D (WASD / Arrows) to catch <strong class="text-emerald-300">10 Luminous Herbs</strong>! Dodge <strong class="text-rose-400">Toxic Spores (-25 HP)</strong>.</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2.5">
+                <div class="px-3 py-1 rounded-xl bg-slate-900/90 border border-emerald-500/30 text-center">
+                    <span class="text-[9px] text-slate-400 block uppercase">Herbs</span>
+                    <strong id="s1-herbs" class="font-mono text-sm sm:text-base text-emerald-300">0 / 10</strong>
+                </div>
+                <div class="px-3 py-1 rounded-xl bg-slate-900/90 border border-amber-500/30 text-center">
+                    <span class="text-[9px] text-slate-400 block uppercase">Time</span>
+                    <strong id="s1-timer" class="font-mono text-sm sm:text-base text-amber-300">30s</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Start Modal Overlay -->
+        <div id="s1-start-overlay" class="my-auto mx-auto max-w-md wuxia-panel rounded-3xl p-6 text-center border-emerald-400/50 pointer-events-auto">
+            <span class="px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[10px] font-bold uppercase tracking-wider">Google Game Night Challenge • 3D Edition</span>
+            <h3 class="font-wuxia text-2xl font-bold text-emerald-200 mt-2 mb-2">Enter the 3D Bamboo Forest</h3>
+            <p class="text-xs sm:text-sm text-slate-300 mb-5 leading-relaxed">
+                Guide Maomi across the 3D forest clearing using <strong>W / A / S / D</strong>, <strong>Arrow Keys</strong>, or the on-screen controls to catch falling spirit herbs!
+            </p>
+            <div class="flex flex-col sm:flex-row justify-center gap-2.5">
+                <button onclick="startStage1()" class="px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-wuxia font-bold text-sm shadow-lg hover:brightness-110">
+                    Begin 3D Herb Harvest
+                </button>
+                <button onclick="skipToStage3()" class="px-4 py-3 rounded-xl wuxia-panel text-cyan-300 hover:text-white font-wuxia text-xs font-bold border-cyan-500/40">
+                    Jump to 3D Boss (Stage III) →
+                </button>
+            </div>
+        </div>
+
+        <!-- Bottom Left/Right Steering Controls for Stage I -->
+        <div class="w-full max-w-md mx-auto flex items-center justify-between gap-3 pb-2 pointer-events-auto">
+            <button onpointerdown="setMoveDir(-1)" onpointerup="setMoveDir(0)" onpointerleave="setMoveDir(0)" class="flex-1 py-3.5 rounded-2xl wuxia-panel text-emerald-300 font-wuxia font-bold text-sm border-emerald-500/40 active:bg-emerald-900/60">
+                ◀ Move Left
+            </button>
+            <button onpointerdown="setMoveDir(1)" onpointerup="setMoveDir(0)" onpointerleave="setMoveDir(0)" class="flex-1 py-3.5 rounded-2xl wuxia-panel text-emerald-300 font-wuxia font-bold text-sm border-emerald-500/40 active:bg-emerald-900/60">
+                Move Right ▶
+            </button>
+        </div>
+    </main>
+
+    <!-- =========================================================================
+         STAGE II HUD OVERLAY: 3D HALL OF MYSTERIOUS AILMENTS (Jinka Deduction)
+         ========================================================================= -->
+    <main id="stage-2-view" class="hidden relative z-20 flex-1 w-full max-w-3xl mx-auto px-3 sm:px-6 py-4 flex flex-col justify-end pb-5 pointer-events-none">
+        <div class="w-full wuxia-panel rounded-3xl p-4 sm:p-6 border-indigo-400/50 pointer-events-auto">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-700/80 pb-3 mb-3">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-xl">📌</div>
+                    <div>
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-indigo-300">Player 2 • Jinka (3D Meridian Study)</span>
+                        <h2 class="font-wuxia text-base sm:text-lg font-bold text-white">Stage II: Hall of Mysterious Ailments</h2>
+                    </div>
+                </div>
+                <span id="s2-progress" class="px-3 py-1 rounded-full bg-indigo-950 border border-indigo-400/40 text-indigo-200 font-wuxia text-xs font-bold">
+                    Case 1 of 3
+                </span>
+            </div>
+
+            <div class="p-3.5 rounded-2xl bg-slate-900/85 border border-amber-500/30 mb-4">
+                <h3 id="s2-case-title" class="font-wuxia text-sm sm:text-base font-bold text-amber-200 mb-1">
+                    Affliction I: Stagnant Dark Pulse of the Northern Gate
+                </h3>
+                <p id="s2-case-desc" class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                    A palace guard collapses with frost-rimed lips and a sluggish dark pulse after inhaling pale mist near the Serpent Altar. Which remedy restores his Yang Qi?
+                </p>
+            </div>
+
+            <div id="s2-options" class="grid grid-cols-1 sm:grid-cols-3 gap-2.5"></div>
+            <div id="s2-feedback" class="mt-3 hidden p-2.5 rounded-xl text-xs font-medium"></div>
+        </div>
+    </main>
+
+    <!-- =========================================================================
+         STAGE III HUD OVERLAY: 3D ALTAR OF THE SERPENT (Boss Battle)
+         ========================================================================= -->
+    <main id="stage-3-view" class="hidden relative z-20 flex-1 w-full max-w-5xl mx-auto px-3 sm:px-6 py-3 flex flex-col justify-between pointer-events-none">
+        
+        <!-- TOP HUD: Boss Health & Intent -->
+        <section class="w-full max-w-lg mx-auto wuxia-panel rounded-2xl p-3 border-cyan-500/45 pointer-events-auto">
+            <div class="flex justify-between items-center mb-1">
+                <div class="flex items-center gap-2">
+                    <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-cyan-950 text-cyan-300 border border-cyan-500/40">3D Serpent Empress</span>
+                    <h2 class="font-wuxia text-sm sm:text-base font-bold text-cyan-100">The White Lady</h2>
+                </div>
+                <span id="enemy-hp-text" class="text-xs font-mono font-bold text-cyan-300">400 / 400</span>
+            </div>
+            <div class="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden border border-slate-700/80 p-0.5">
+                <div id="enemy-hp-bar" class="h-full rounded-full bg-gradient-to-r from-cyan-400 via-sky-300 to-indigo-400 transition-all duration-500 shadow-[0_0_10px_#38bdf8]" style="width: 100%;"></div>
+            </div>
+            <div class="mt-1.5 flex items-center justify-between text-[11px]">
+                <div class="flex items-center gap-1.5 text-amber-300">
+                    <span class="inline-block w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+                    <span>Next Intent: <strong id="enemy-intent" class="text-white">Venomous Gale (24 DMG + Miasma)</strong></span>
+                </div>
+                <div id="enemy-status-tags" class="flex gap-1"></div>
+            </div>
+        </section>
+
+        <!-- BOTTOM HUD: Combat Log, Gauges & 4 Medical Skills -->
+        <section class="w-full max-w-3xl mx-auto flex flex-col gap-2 pb-1 pointer-events-auto">
+            <!-- Battle Log Banner -->
+            <div class="wuxia-panel rounded-xl px-3.5 py-2 flex items-center justify-between gap-2 border-amber-400/35">
+                <div class="flex items-center gap-2">
+                    <span class="text-sm">📜</span>
+                    <p id="battle-log" class="text-xs text-amber-100 font-medium leading-snug">
+                        "Atop the 3D Altar of the Serpent lies the Ultimate Panacea! Strike her meridians!"
+                    </p>
+                </div>
+                <span id="turn-badge" class="shrink-0 px-2 py-0.5 rounded-lg bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[11px] font-wuxia font-bold">
+                    Turn 1
+                </span>
+            </div>
+
+            <!-- Squad Vitals & Tri-Qi Resonance Meter -->
+            <div class="wuxia-panel rounded-2xl p-2.5 flex flex-col sm:flex-row items-center justify-between gap-2.5">
+                <div class="w-full sm:w-1/2">
+                    <div class="flex justify-between text-[11px] mb-1">
+                        <span class="text-emerald-300 font-semibold">💚 Shared Squad HP</span>
+                        <span id="party-hp-text" class="font-mono text-emerald-200">200 / 200</span>
+                    </div>
+                    <div class="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-700">
+                        <div id="party-hp-bar" class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-300 transition-all duration-300" style="width: 100%;"></div>
+                    </div>
+                </div>
+                <div class="w-full sm:w-1/2">
+                    <div class="flex justify-between text-[11px] mb-1">
+                        <span class="text-amber-300 font-semibold">✨ Tri-Qi Resonance</span>
+                        <span id="resonance-text" class="font-mono text-amber-200">0 / 100%</span>
+                    </div>
+                    <div class="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-700">
+                        <div id="resonance-bar" class="h-full rounded-full bg-gradient-to-r from-amber-500 via-yellow-300 to-emerald-300 transition-all duration-300" style="width: 0%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4 Specialized Medical Skills -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <button onclick="performSkill('decoction')" class="wuxia-btn wuxia-panel rounded-2xl p-2.5 text-left border-emerald-500/45 hover:border-emerald-300">
+                    <div class="flex justify-between items-center mb-0.5">
+                        <span class="text-lg">🌿</span>
+                        <span class="px-1.5 py-0.5 text-[9px] font-bold rounded bg-emerald-500/20 text-emerald-300">Maomi</span>
+                    </div>
+                    <div class="font-wuxia text-xs font-bold text-emerald-200">Herbal Decoction</div>
+                    <p class="text-[10px] text-slate-300 leading-tight mt-0.5">+35 HP, cleanse Miasma &amp; +35% Qi.</p>
+                </button>
+
+                <button onclick="performSkill('needles')" class="wuxia-btn wuxia-panel rounded-2xl p-2.5 text-left border-indigo-500/45 hover:border-indigo-300">
+                    <div class="flex justify-between items-center mb-0.5">
+                        <span class="text-lg">📌</span>
+                        <span class="px-1.5 py-0.5 text-[9px] font-bold rounded bg-indigo-500/20 text-indigo-300">Jinka</span>
+                    </div>
+                    <div class="font-wuxia text-xs font-bold text-indigo-200">Meridian Needles</div>
+                    <p class="text-[10px] text-slate-300 leading-tight mt-0.5">60 Chi DMG strike &amp; +35% Qi.</p>
+                </button>
+
+                <button onclick="performSkill('antidote')" class="wuxia-btn wuxia-panel rounded-2xl p-2.5 text-left border-pink-500/45 hover:border-pink-300">
+                    <div class="flex justify-between items-center mb-0.5">
+                        <span class="text-lg">🧪</span>
+                        <span class="px-1.5 py-0.5 text-[9px] font-bold rounded bg-pink-500/20 text-pink-300">Laulan</span>
+                    </div>
+                    <div class="font-wuxia text-xs font-bold text-pink-200">Universal Antidote</div>
+                    <p class="text-[10px] text-slate-300 leading-tight mt-0.5">+15 HP, +25 Ward, 45 DMG &amp; +35% Qi.</p>
+                </button>
+
+                <button id="ultimate-btn" onclick="performSkill('resonance')" disabled class="wuxia-btn wuxia-panel rounded-2xl p-2.5 text-left border-amber-500/45 disabled:opacity-45 disabled:cursor-not-allowed">
+                    <div class="flex justify-between items-center mb-0.5">
+                        <span class="text-lg">✨</span>
+                        <span class="px-1.5 py-0.5 text-[9px] font-bold rounded bg-amber-500/20 text-amber-300">100% Qi</span>
+                    </div>
+                    <div class="font-wuxia text-xs font-bold text-amber-200">Tri-Qi Resonance</div>
+                    <p class="text-[10px] text-slate-300 leading-tight mt-0.5">Squad Ultimate: 95 DMG light burst!</p>
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Apothecary Compendium & Stage Selector Modal -->
+    <div id="lore-modal" class="fixed inset-0 z-50 hidden bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="wuxia-panel max-w-lg w-full rounded-3xl p-6 border-amber-400/40 relative max-h-[90vh] overflow-y-auto">
+            <button id="close-lore" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center">✕</button>
+            <div class="flex items-center gap-2 text-amber-300 mb-1">
+                <span class="font-hanzi text-xl">白衣魅影</span>
+                <h2 class="font-wuxia text-lg font-bold">Shadows of the White Lady 3D</h2>
+            </div>
+            <p class="text-xs text-amber-200/80 italic mb-3">"Discover the essence of medicine" — Google Game Night Challenge</p>
+            
+            <div class="space-y-2 text-xs mb-4">
+                <div class="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30">
+                    <strong class="text-emerald-300">Maomi • The Venom-Taster Prodigy:</strong> Sprints through the 3D Bamboo Forest to gather luminous herbs and brews Herbal Decoctions (+35 HP).
+                </div>
+                <div class="p-2.5 rounded-xl bg-indigo-950/40 border border-indigo-500/30">
+                    <strong class="text-indigo-300">Jinka • The Meridian Strategist:</strong> Diagnoses supernatural afflictions in Stage II and fires golden Meridian Needles (60 DMG).
+                </div>
+                <div class="p-2.5 rounded-xl bg-pink-950/40 border border-pink-500/30">
+                    <strong class="text-pink-300">Laulan • The Lotus Herbalist:</strong> Channels Universal Antidotes (+15 HP, +25 Ward, 45 DMG) against The White Lady.
+                </div>
+            </div>
+
+            <div class="border-t border-slate-700/80 pt-3">
+                <span class="text-[10px] uppercase tracking-wider text-slate-400 font-bold block mb-2">3D Stage Selector (Drag Canvas Anytime to Orbit Camera)</span>
+                <div class="grid grid-cols-3 gap-2">
+                    <button onclick="switchStage(1); closeLoreModal();" class="py-2 px-2 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-200 text-xs font-bold hover:bg-emerald-900/70">Stage I: 3D Forest</button>
+                    <button onclick="switchStage(2); closeLoreModal();" class="py-2 px-2 rounded-xl bg-indigo-950/60 border border-indigo-500/40 text-indigo-200 text-xs font-bold hover:bg-indigo-900/70">Stage II: 3D Study</button>
+                    <button onclick="switchStage(3); closeLoreModal();" class="py-2 px-2 rounded-xl bg-cyan-950/60 border border-cyan-500/40 text-cyan-200 text-xs font-bold hover:bg-cyan-900/70">Stage III: 3D Altar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Victory / Defeat & Grand Apothecary Cup Leaderboard Modal -->
+    <div id="endgame-modal" class="fixed inset-0 z-50 hidden bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="wuxia-panel max-w-md w-full rounded-3xl p-6 text-center border-amber-400/50">
+            <div id="endgame-icon" class="text-5xl mb-2">🏆</div>
+            <span class="px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[10px] font-bold uppercase tracking-wider">Google Game Night Results</span>
+            <h2 id="endgame-title" class="font-wuxia text-2xl font-bold text-amber-200 mt-2 mb-2">Ultimate Panacea Claimed!</h2>
+            <p id="endgame-desc" class="text-xs sm:text-sm text-slate-300 mb-4 leading-relaxed">
+                The Tri-Apothecary Squad purified The White Lady's frost miasma and secured the elixir!
+            </p>
+            <div class="p-3.5 rounded-2xl bg-slate-900/90 border border-amber-500/30 mb-5 text-xs space-y-1.5">
+                <div class="flex justify-between"><span class="text-slate-400">Remaining Squad HP:</span><strong id="score-hp" class="text-emerald-300 font-mono">0</strong></div>
+                <div class="flex justify-between"><span class="text-slate-400">Completion Time:</span><strong id="score-time" class="text-cyan-300 font-mono">00:00</strong></div>
+                <div class="flex justify-between border-t border-slate-700 pt-1.5 text-sm"><span class="text-amber-200 font-bold">Grand Apothecary Score:</span><strong id="score-total" class="text-amber-300 font-mono font-bold">0 pts</strong></div>
+            </div>
+            <button onclick="resetFullChallenge()" class="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-wuxia font-bold text-sm shadow-lg hover:brightness-110">
+                Start New 3D Tri-Apothecary Run
+            </button>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * ============================================================================
+         * 1. TONE.JS GUQIN & WUXIA CHIME SYNTHESIZER
+         * ============================================================================
+         */
+        let soundEnabled = false;
+        let synth = null;
+
+        async function toggleAudio() {
+            if (!soundEnabled) {
+                await Tone.start();
+                synth = new Tone.PolySynth(Tone.Synth, {
+                    oscillator: { type: 'triangle' },
+                    envelope: { attack: 0.03, decay: 0.4, sustain: 0.2, release: 1.4 }
+                }).toDestination();
+                synth.volume.value = -8;
+                soundEnabled = true;
+                document.getElementById('sound-icon-off').classList.add('hidden');
+                document.getElementById('sound-icon-on').classList.remove('hidden');
+                playGuqinChord(['D4', 'A4', 'E5']);
+            } else {
+                soundEnabled = false;
+                document.getElementById('sound-icon-off').classList.remove('hidden');
+                document.getElementById('sound-icon-on').classList.add('hidden');
+            }
+        }
+
+        function playGuqinChord(notes, duration = '8n') {
+            if (!soundEnabled || !synth) return;
+            const now = Tone.now();
+            notes.forEach((n, idx) => {
+                synth.triggerAttackRelease(n, duration, now + idx * 0.07);
+            });
+        }
+        document.getElementById('sound-toggle').addEventListener('click', toggleAudio);
+
+        /**
+         * ============================================================================
+         * 2. THREE.JS 3D ENGINE, ARTICULATED HUMAN CHARACTERS & CAMERA ORBIT
+         * ============================================================================
+         */
+        const threeCanvas = document.getElementById('three-canvas');
+        const renderer = new THREE.WebGLRenderer({ canvas: threeCanvas, antialias: true, powerPreference: 'high-performance' });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x070b14);
+        scene.fog = new THREE.FogExp2(0x0a1120, 0.032);
+
+        const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 120);
+        
+        // Interactive Mouse/Touch Camera Orbit & Zoom State
+        let camYaw = 0;
+        let camPitch = 0.24;
+        let camZoom = 1.0;
+        let isDraggingCam = false;
+        let prevMouseX = 0;
+        let prevMouseY = 0;
+
+        threeCanvas.addEventListener('pointerdown', (e) => {
+            isDraggingCam = true;
+            prevMouseX = e.clientX;
+            prevMouseY = e.clientY;
+        });
+        window.addEventListener('pointermove', (e) => {
+            if (!isDraggingCam) return;
+            const dx = e.clientX - prevMouseX;
+            const dy = e.clientY - prevMouseY;
+            prevMouseX = e.clientX;
+            prevMouseY = e.clientY;
+            camYaw = Math.max(-0.95, Math.min(0.95, camYaw - dx * 0.005));
+            camPitch = Math.max(0.05, Math.min(0.75, camPitch + dy * 0.004));
+        });
+        window.addEventListener('pointerup', () => { isDraggingCam = false; });
+        threeCanvas.addEventListener('wheel', (e) => {
+            camZoom = Math.max(0.65, Math.min(1.45, camZoom + e.deltaY * 0.0008));
+        }, { passive: true });
+
+        // Base Lighting
+        const ambientLight = new THREE.AmbientLight(0x8fa8c8, 0.75);
+        scene.add(ambientLight);
+
+        const moonLight = new THREE.DirectionalLight(0xdbeafe, 1.3);
+        moonLight.position.set(10, 18, 12);
+        moonLight.castShadow = true;
+        moonLight.shadow.mapSize.width = 1024;
+        moonLight.shadow.mapSize.height = 1024;
+        scene.add(moonLight);
+
+        // Stage Containers
+        const stage1Group = new THREE.Group();
+        const stage2Group = new THREE.Group();
+        const stage3Group = new THREE.Group();
+        scene.add(stage1Group);
+        scene.add(stage2Group);
+        scene.add(stage3Group);
+
+        /**
+         * Helper: Build a full-body 3D Articulated Human Apothecary Figure
+         */
+        function create3DHumanHero(config) {
+            const root = new THREE.Group();
+            const skinMat = new THREE.MeshStandardMaterial({ color: 0xfde2d2, roughness: 0.55 });
+            const robeMat = new THREE.MeshStandardMaterial({ color: config.robeColor, roughness: 0.65 });
+            const trimMat = new THREE.MeshStandardMaterial({ color: config.trimColor, roughness: 0.4, metalness: 0.25 });
+            const hairMat = new THREE.MeshStandardMaterial({ color: config.hairColor, roughness: 0.5 });
+
+            // Glowing Aura Ring at Feet
+            const auraGeo = new THREE.RingGeometry(0.65, 0.85, 32);
+            const auraMat = new THREE.MeshBasicMaterial({ color: config.auraColor, side: THREE.DoubleSide, transparent: true, opacity: 0.55 });
+            const aura = new THREE.Mesh(auraGeo, auraMat);
+            aura.rotation.x = -Math.PI / 2;
+            aura.position.y = 0.02;
+            root.add(aura);
+
+            // Legs (Articulated pivots at hips)
+            const legGeo = new THREE.CylinderGeometry(0.11, 0.09, 0.82, 12);
+            const bootMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 });
+            const leftLeg = new THREE.Group();
+            leftLeg.position.set(-0.18, 0.85, 0);
+            const leftLegMesh = new THREE.Mesh(legGeo, bootMat);
+            leftLegMesh.position.y = -0.41;
+            leftLeg.add(leftLegMesh);
+            root.add(leftLeg);
+
+            const rightLeg = new THREE.Group();
+            rightLeg.position.set(0.18, 0.85, 0);
+            const rightLegMesh = new THREE.Mesh(legGeo, bootMat);
+            rightLegMesh.position.y = -0.41;
+            rightLeg.add(rightLegMesh);
+            root.add(rightLeg);
+
+            // Upper Body Pivot (for breathing & lunges)
+            const bodyPivot = new THREE.Group();
+            bodyPivot.position.y = 0.85;
+            root.add(bodyPivot);
+
+            // Flowing Hanfu Skirt
+            const skirtGeo = new THREE.CylinderGeometry(0.24, 0.52, 0.85, 16);
+            const skirt = new THREE.Mesh(skirtGeo, robeMat);
+            skirt.position.y = -0.35;
+            skirt.castShadow = true;
+            bodyPivot.add(skirt);
+
+            // Torso / Tunic
+            const torsoGeo = new THREE.CylinderGeometry(0.22, 0.25, 0.68, 16);
+            const torso = new THREE.Mesh(torsoGeo, robeMat);
+            torso.position.y = 0.34;
+            torso.castShadow = true;
+            bodyPivot.add(torso);
+
+            // Sash / Belt
+            const sashGeo = new THREE.CylinderGeometry(0.255, 0.255, 0.12, 16);
+            const sash = new THREE.Mesh(sashGeo, trimMat);
+            sash.position.y = 0.08;
+            bodyPivot.add(sash);
+
+            // Head & Neck
+            const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.09, 0.14, 12), skinMat);
+            neck.position.y = 0.73;
+            bodyPivot.add(neck);
+
+            const headGroup = new THREE.Group();
+            headGroup.position.y = 0.96;
+            bodyPivot.add(headGroup);
+
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.23, 20, 20), skinMat);
+            head.castShadow = true;
+            headGroup.add(head);
+
+            // Anime Eyes
+            const eyeMat = new THREE.MeshBasicMaterial({ color: config.eyeColor });
+            const eyeGeo = new THREE.SphereGeometry(0.032, 10, 10);
+            const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+            leftEye.position.set(-0.08, 0.01, 0.205);
+            const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+            rightEye.position.set(0.08, 0.01, 0.205);
+            headGroup.add(leftEye, rightEye);
+
+            // Hair Styling
+            const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.245, 20, 20, 0, Math.PI * 2, 0, Math.PI * 0.62), hairMat);
+            hairCap.rotation.x = -0.25;
+            headGroup.add(hairCap);
+
+            if (config.hairStyle === 'buns') {
+                const bunGeo = new THREE.SphereGeometry(0.11, 14, 14);
+                const bunL = new THREE.Mesh(bunGeo, hairMat);
+                bunL.position.set(-0.22, 0.16, -0.02);
+                const bunR = new THREE.Mesh(bunGeo, hairMat);
+                bunR.position.set(0.22, 0.16, -0.02);
+                headGroup.add(bunL, bunR);
+            } else if (config.hairStyle === 'long') {
+                const backHair = new THREE.Mesh(new THREE.CylinderGeometry(0.23, 0.28, 0.85, 14), hairMat);
+                backHair.position.set(0, -0.35, -0.11);
+                headGroup.add(backHair);
+            } else if (config.hairStyle === 'twintails') {
+                const tailGeo = new THREE.ConeGeometry(0.09, 0.78, 12);
+                const tailL = new THREE.Mesh(tailGeo, hairMat);
+                tailL.position.set(-0.26, -0.22, -0.08);
+                tailL.rotation.z = 0.25;
+                const tailR = new THREE.Mesh(tailGeo, hairMat);
+                tailR.position.set(0.26, -0.22, -0.08);
+                tailR.rotation.z = -0.25;
+                headGroup.add(tailL, tailR);
+            }
+
+            // Articulated Arms with Wide Hanfu Sleeves
+            const leftArm = new THREE.Group();
+            leftArm.position.set(-0.29, 0.58, 0);
+            const sleeveL = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.19, 0.54, 12), robeMat);
+            sleeveL.position.y = -0.24;
+            const handL = new THREE.Mesh(new THREE.SphereGeometry(0.065, 10, 10), skinMat);
+            handL.position.y = -0.54;
+            leftArm.add(sleeveL, handL);
+            bodyPivot.add(leftArm);
+
+            const rightArm = new THREE.Group();
+            rightArm.position.set(0.29, 0.58, 0);
+            const sleeveR = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.19, 0.54, 12), robeMat);
+            sleeveR.position.y = -0.24;
+            const handR = new THREE.Mesh(new THREE.SphereGeometry(0.065, 10, 10), skinMat);
+            handR.position.y = -0.54;
+            rightArm.add(sleeveR, handR);
+            bodyPivot.add(rightArm);
+
+            // Character Signature 3D Props
+            let propMesh = null;
+            if (config.prop === 'vial') {
+                propMesh = new THREE.Mesh(
+                    new THREE.OctahedronGeometry(0.14, 1),
+                    new THREE.MeshStandardMaterial({ color: 0x34d399, emissive: 0x10b981, emissiveIntensity: 0.9 })
+                );
+                propMesh.position.set(0, -0.62, 0.12);
+                rightArm.add(propMesh);
+                rightArm.rotation.x = -0.85;
+            } else if (config.prop === 'basket') {
+                propMesh = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.32, 0.22, 0.28, 16),
+                    new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.8 })
+                );
+                propMesh.position.set(0, 0.18, 0.42);
+                bodyPivot.add(propMesh);
+                leftArm.rotation.x = -0.7;
+                rightArm.rotation.x = -0.7;
+            } else if (config.prop === 'needles') {
+                propMesh = new THREE.Group();
+                const needleGeo = new THREE.CylinderGeometry(0.012, 0.004, 0.42, 8);
+                const goldMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, emissive: 0xf59e0b, emissiveIntensity: 0.8 });
+                [-0.08, 0, 0.08].forEach((offset, i) => {
+                    const n = new THREE.Mesh(needleGeo, goldMat);
+                    n.position.set(offset, -0.62, 0.14);
+                    n.rotation.z = (i - 1) * 0.18;
+                    propMesh.add(n);
+                });
+                rightArm.add(propMesh);
+                rightArm.rotation.x = -0.75;
+            } else if (config.prop === 'fan') {
+                propMesh = new THREE.Mesh(
+                    new THREE.CircleGeometry(0.32, 16, 0, Math.PI),
+                    new THREE.MeshStandardMaterial({ color: 0xfbcfe8, emissive: 0xec4899, emissiveIntensity: 0.5, side: THREE.DoubleSide })
+                );
+                propMesh.position.set(0, -0.58, 0.15);
+                rightArm.add(propMesh);
+                rightArm.rotation.x = -0.65;
+            }
+
+            return {
+                root,
+                bodyPivot,
+                headGroup,
+                leftArm,
+                rightArm,
+                leftLeg,
+                rightLeg,
+                aura,
+                propMesh,
+                basePos: new THREE.Vector3(),
+                lungeTimer: 0,
+                phase: Math.random() * Math.PI * 2
+            };
+        }
+
+        /**
+         * Build 3D Stage I Environment: Misty Bamboo Forest & Maomi
+         */
+        const s1Ground = new THREE.Mesh(
+            new THREE.PlaneGeometry(36, 36),
+            new THREE.MeshStandardMaterial({ color: 0x0b1f1c, roughness: 0.9 })
+        );
+        s1Ground.rotation.x = -Math.PI / 2;
+        s1Ground.receiveShadow = true;
+        stage1Group.add(s1Ground);
+
+        const bambooMat = new THREE.MeshStandardMaterial({ color: 0x065f46, roughness: 0.55 });
+        for (let i = 0; i < 34; i++) {
+            const angle = (i / 34) * Math.PI * 2;
+            const radius = 6.5 + (i % 4) * 2.2;
+            const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.17, 13, 10), bambooMat);
+            stalk.position.set(Math.cos(angle) * radius, 6.5, Math.sin(angle) * radius - 2);
+            stalk.castShadow = true;
+            stage1Group.add(stalk);
+        }
+
+        const maomiRunner3D = create3DHumanHero({
+            robeColor: 0x059669,
+            trimColor: 0xfbbf24,
+            hairColor: 0x064e3b,
+            eyeColor: 0x10b981,
+            auraColor: 0x34d399,
+            hairStyle: 'buns',
+            prop: 'basket'
+        });
+        maomiRunner3D.root.position.set(0, 0, 3.2);
+        stage1Group.add(maomiRunner3D.root);
+
+        /**
+         * Build 3D Stage II Environment: Hall of Mysterious Ailments & Jinka
+         */
+        const s2Floor = new THREE.Mesh(
+            new THREE.CylinderGeometry(8, 8.5, 0.4, 32),
+            new THREE.MeshStandardMaterial({ color: 0x1e1b4b, roughness: 0.6 })
+        );
+        s2Floor.position.y = -0.2;
+        stage2Group.add(s2Floor);
+
+        const jinkaStudy3D = create3DHumanHero({
+            robeColor: 0x312e81,
+            trimColor: 0x38bdf8,
+            hairColor: 0x2e1065,
+            eyeColor: 0x818cf8,
+            auraColor: 0x818cf8,
+            hairStyle: 'long',
+            prop: 'needles'
+        });
+        jinkaStudy3D.root.position.set(0, 0, 0.5);
+        stage2Group.add(jinkaStudy3D.root);
+
+        const studyCrystals = [];
+        for (let i = 0; i < 6; i++) {
+            const c = new THREE.Mesh(
+                new THREE.OctahedronGeometry(0.24, 0),
+                new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 0.85 })
+            );
+            stage2Group.add(c);
+            studyCrystals.push(c);
+        }
+
+        /**
+         * Build 3D Stage III Environment: Altar of the Serpent, The White Lady & Tri-Apothecary Squad
+         */
+        const courtyardFloor = new THREE.Mesh(
+            new THREE.PlaneGeometry(34, 34),
+            new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.85 })
+        );
+        courtyardFloor.rotation.x = -Math.PI / 2;
+        courtyardFloor.receiveShadow = true;
+        stage3Group.add(courtyardFloor);
+
+        // Stone Serpent Altar Pedestal
+        const altarBase = new THREE.Mesh(
+            new THREE.BoxGeometry(4.4, 1.3, 2.8),
+            new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.7 })
+        );
+        altarBase.position.set(0, 0.65, -4.5);
+        altarBase.castShadow = true;
+        stage3Group.add(altarBase);
+
+        // Ultimate Panacea Elixir Bottle on the Altar
+        const panaceaBottle = new THREE.Mesh(
+            new THREE.SphereGeometry(0.32, 16, 16),
+            new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x34d399, emissiveIntensity: 1.2, transparent: true, opacity: 0.9 })
+        );
+        panaceaBottle.position.set(0, 1.65, -3.6);
+        stage3Group.add(panaceaBottle);
+
+        const panaceaLight = new THREE.PointLight(0x34d399, 1.8, 7);
+        panaceaLight.position.set(0, 2.0, -3.6);
+        stage3Group.add(panaceaLight);
+
+        // Ice & Frost Crystals surrounding the Altar
+        const iceMat = new THREE.MeshStandardMaterial({ color: 0xbae6fd, emissive: 0x38bdf8, emissiveIntensity: 0.45, roughness: 0.2 });
+        [[-1.8, -4.0, 0.3], [-1.2, -3.5, -0.2], [1.2, -3.5, 0.25], [1.8, -4.0, -0.3]].forEach(([x, z, tilt]) => {
+            const crystal = new THREE.Mesh(new THREE.ConeGeometry(0.32, 1.5, 6), iceMat);
+            crystal.position.set(x, 1.1, z);
+            crystal.rotation.z = tilt;
+            stage3Group.add(crystal);
+        });
+
+        // Glowing Palace Lanterns on Pillars
+        const lanterns3D = [];
+        [[-4.8, -2.5], [4.8, -2.5], [-5.5, 1.5], [5.5, 1.5]].forEach(([x, z]) => {
+            const pillar = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.22, 0.26, 4.6, 12),
+                new THREE.MeshStandardMaterial({ color: 0x3f2318 })
+            );
+            pillar.position.set(x, 2.3, z);
+            stage3Group.add(pillar);
+
+            const lantern = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.28, 0.28, 0.55, 12),
+                new THREE.MeshStandardMaterial({ color: 0xfef08a, emissive: 0xf59e0b, emissiveIntensity: 1.3 })
+            );
+            lantern.position.set(x, 3.6, z + 0.32);
+            stage3Group.add(lantern);
+            lanterns3D.push(lantern);
+        });
+
+        // Build 3D Boss: The White Lady (Human Upper Body + Coiling 3D Serpent Tail)
+        function create3DWhiteLady() {
+            const root = new THREE.Group();
+            root.position.set(0, 1.5, -5.0);
+
+            const skinMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4 });
+            const gownMat = new THREE.MeshStandardMaterial({ color: 0xe0f2fe, emissive: 0x38bdf8, emissiveIntensity: 0.25, roughness: 0.4 });
+            const silverHairMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, emissive: 0x94a3b8, emissiveIntensity: 0.2 });
+
+            // Coiling 3D Serpent Tail Segments
+            const tailSegments = [];
+            for (let i = 0; i < 14; i++) {
+                const radius = 0.42 * (1 - i * 0.055);
+                const seg = new THREE.Mesh(new THREE.SphereGeometry(radius, 14, 14), gownMat);
+                seg.position.set(Math.sin(i * 0.55) * 0.75, -i * 0.16, Math.cos(i * 0.55) * 0.35);
+                root.add(seg);
+                tailSegments.push(seg);
+            }
+
+            // Human Torso & Flowing Sleeves
+            const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.32, 0.85, 16), gownMat);
+            torso.position.y = 0.45;
+            root.add(torso);
+
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 20, 20), skinMat);
+            head.position.y = 1.12;
+            root.add(head);
+
+            // Crimson Serpent Eyes
+            const crimsonMat = new THREE.MeshBasicMaterial({ color: 0xf43f5e });
+            const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.036, 10, 10), crimsonMat);
+            eyeL.position.set(-0.09, 1.14, 0.23);
+            const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.036, 10, 10), crimsonMat);
+            eyeR.position.set(0.09, 1.14, 0.23);
+            root.add(eyeL, eyeR);
+
+            // Flowing Silver Hair
+            const hair = new THREE.Mesh(new THREE.ConeGeometry(0.45, 1.35, 16), silverHairMat);
+            hair.position.set(0, 0.78, -0.18);
+            root.add(hair);
+
+            // Outstretched Arms
+            const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.24, 0.75, 12), gownMat);
+            leftArm.position.set(-0.48, 0.65, 0.12);
+            leftArm.rotation.z = 0.85;
+            root.add(leftArm);
+
+            const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.24, 0.75, 12), gownMat);
+            rightArm.position.set(0.48, 0.65, 0.12);
+            rightArm.rotation.z = -0.85;
+            root.add(rightArm);
+
+            const bossAura = new THREE.PointLight(0x38bdf8, 2.2, 10);
+            bossAura.position.set(0, 1.2, 0.5);
+            root.add(bossAura);
+
+            return { root, tailSegments, leftArm, rightArm, hitTimer: 0, lungeTimer: 0 };
+        }
+
+        const boss3D = create3DWhiteLady();
+        stage3Group.add(boss3D.root);
+
+        // Build 3D Tri-Apothecary Squad in Stage III
+        const hero3D_Maomi = create3DHumanHero({
+            robeColor: 0x059669, trimColor: 0xfbbf24, hairColor: 0x064e3b,
+            eyeColor: 0x10b981, auraColor: 0x34d399, hairStyle: 'buns', prop: 'vial'
+        });
+        hero3D_Maomi.basePos.set(-2.3, 0, 2.2);
+        hero3D_Maomi.root.position.copy(hero3D_Maomi.basePos);
+        hero3D_Maomi.root.rotation.y = Math.PI - 0.25;
+        stage3Group.add(hero3D_Maomi.root);
+
+        const hero3D_Jinka = create3DHumanHero({
+            robeColor: 0x312e81, trimColor: 0x38bdf8, hairColor: 0x2e1065,
+            eyeColor: 0x818cf8, auraColor: 0x818cf8, hairStyle: 'long', prop: 'needles'
+        });
+        hero3D_Jinka.basePos.set(0, 0, 2.9);
+        hero3D_Jinka.root.position.copy(hero3D_Jinka.basePos);
+        hero3D_Jinka.root.rotation.y = Math.PI;
+        stage3Group.add(hero3D_Jinka.root);
+
+        const hero3D_Laulan = create3DHumanHero({
+            robeColor: 0xbe185d, trimColor: 0xfce7f3, hairColor: 0xc084fc,
+            eyeColor: 0xf472b6, auraColor: 0xf472b6, hairStyle: 'twintails', prop: 'fan'
+        });
+        hero3D_Laulan.basePos.set(2.3, 0, 2.2);
+        hero3D_Laulan.root.position.copy(hero3D_Laulan.basePos);
+        hero3D_Laulan.root.rotation.y = Math.PI + 0.25;
+        stage3Group.add(hero3D_Laulan.root);
+
+        const squad3D = [hero3D_Maomi, hero3D_Jinka, hero3D_Laulan];
+
+        // Ambient 3D Floating Sakura & Spirit Qi Particles
+        const particleCount = 140;
+        const pGeo = new THREE.BufferGeometry();
+        const pPositions = new Float32Array(particleCount * 3);
+        for (let i = 0; i < particleCount; i++) {
+            pPositions[i * 3] = (Math.random() - 0.5) * 22;
+            pPositions[i * 3 + 1] = Math.random() * 9;
+            pPositions[i * 3 + 2] = (Math.random() - 0.5) * 22;
+        }
+        pGeo.setAttribute('position', new THREE.BufferAttribute(pPositions, 3));
+        const pMat = new THREE.PointsMaterial({ color: 0xf9a8d4, size: 0.16, transparent: true, opacity: 0.8 });
+        const ambientParticles3D = new THREE.Points(pGeo, pMat);
+        scene.add(ambientParticles3D);
+
+        // 3D Skill Burst Effect Pool & True 3D Flying Projectiles
+        const burst3DList = [];
+        const projectile3DList = [];
+
+        function spawn3DBurst(pos, colorHex, count = 24) {
+            const geo = new THREE.SphereGeometry(0.12, 8, 8);
+            const mat = new THREE.MeshBasicMaterial({ color: colorHex });
+            for (let i = 0; i < count; i++) {
+                const m = new THREE.Mesh(geo, mat);
+                m.position.copy(pos);
+                scene.add(m);
+                burst3DList.push({
+                    mesh: m,
+                    vel: new THREE.Vector3((Math.random() - 0.5) * 0.26, Math.random() * 0.24, (Math.random() - 0.5) * 0.26),
+                    life: 1.0
+                });
+            }
+        }
+
+        function spawn3DProjectile(startPos, endPos, colorHex, arcHeight = 1.4, onArrive = null) {
+            const group = new THREE.Group();
+            const core = new THREE.Mesh(
+                new THREE.OctahedronGeometry(0.24, 1),
+                new THREE.MeshBasicMaterial({ color: colorHex })
+            );
+            const halo = new THREE.Mesh(
+                new THREE.SphereGeometry(0.38, 12, 12),
+                new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0.35 })
+            );
+            group.add(core, halo);
+            group.position.copy(startPos);
+            scene.add(group);
+            projectile3DList.push({
+                mesh: group,
+                start: startPos.clone(),
+                end: endPos.clone(),
+                arcHeight,
+                progress: 0,
+                speed: 0.045,
+                colorHex,
+                onArrive
+            });
+        }
+
+        /**
+         * ============================================================================
+         * 3. GLOBAL CHALLENGE STATE & STAGE ROUTER
+         * ============================================================================
+         */
+        const game = {
+            currentStage: 1,
+            squadHp: 200,
+            squadMaxHp: 200,
+            elapsedSeconds: 0,
+            timerInterval: null,
+            // Stage 1 3D (Full X & Z 3D Movement)
+            s1Running: false,
+            s1Herbs: 0,
+            s1TimeLeft: 30,
+            s1CountdownId: null,
+            s1SpawnId: null,
+            maomiX: 0,
+            maomiZ: 3.2,
+            moveDir: 0,
+            moveZDir: 0,
+            falling3DItems: [],
+            // Stage 2
+            s2CaseIndex: 0,
+            // Stage 3
+            enemyHp: 400,
+            enemyMaxHp: 400,
+            enemyPoison: 0,
+            squadBarrier: 0,
+            squadMiasma: 0,
+            resonance: 0,
+            turn: 1,
+            intentIndex: 0,
+            isBusy: false
+        };
+
+        function startGlobalTimer() {
+            if (game.timerInterval) return;
+            game.timerInterval = setInterval(() => {
+                game.elapsedSeconds++;
+                const mins = String(Math.floor(game.elapsedSeconds / 60)).padStart(2, '0');
+                const secs = String(game.elapsedSeconds % 60).padStart(2, '0');
+                document.getElementById('run-timer').textContent = `${mins}:${secs}`;
+            }, 1000);
+        }
+
+        function updateGlobalHP() {
+            game.squadHp = Math.max(0, Math.min(game.squadMaxHp, game.squadHp));
+            document.getElementById('global-hp-label').textContent = `${game.squadHp} / ${game.squadMaxHp}`;
+        }
+
+        function switchStage(stageNum) {
+            game.currentStage = stageNum;
+            stopStage1Loops();
+
+            stage1Group.visible = (stageNum === 1);
+            stage2Group.visible = (stageNum === 2);
+            stage3Group.visible = (stageNum === 3);
+
+            document.getElementById('stage-1-view').classList.toggle('hidden', stageNum !== 1);
+            document.getElementById('stage-2-view').classList.toggle('hidden', stageNum !== 2);
+            document.getElementById('stage-3-view').classList.toggle('hidden', stageNum !== 3);
+
+            const subtitle = document.getElementById('stage-subtitle');
+            if (stageNum === 1) {
+                subtitle.textContent = 'Stage I: 3D Misty Bamboo Forest';
+                subtitle.className = 'not-italic text-emerald-400 font-semibold';
+                document.getElementById('s1-start-overlay').classList.remove('hidden');
+            } else if (stageNum === 2) {
+                subtitle.textContent = 'Stage II: 3D Hall of Mysterious Ailments';
+                subtitle.className = 'not-italic text-indigo-300 font-semibold';
+                loadStage2Case(0);
+            } else if (stageNum === 3) {
+                subtitle.textContent = 'Stage III: 3D Altar of the Serpent';
+                subtitle.className = 'not-italic text-cyan-300 font-semibold';
+                initStage3Battle();
+            }
+        }
+
+        function skipToStage3() {
+            startGlobalTimer();
+            playGuqinChord(['D4', 'A4', 'D5']);
+            switchStage(3);
+        }
+
+        /**
+         * ============================================================================
+         * 4. STAGE I: 3D MISTY BAMBOO FOREST (Arcade Reflexes with Maomi)
+         * ============================================================================
+         */
+        function setMoveDir(dir) {
+            game.moveDir = dir;
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (!game.s1Running) return;
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') game.moveDir = -1;
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') game.moveDir = 1;
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') game.moveZDir = -1;
+            if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') game.moveZDir = 1;
+        });
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A' || e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+                game.moveDir = 0;
+            }
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W' || e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') {
+                game.moveZDir = 0;
+            }
+        });
+
+        function stopStage1Loops() {
+            game.s1Running = false;
+            game.moveDir = 0;
+            game.moveZDir = 0;
+            clearInterval(game.s1CountdownId);
+            clearInterval(game.s1SpawnId);
+            game.falling3DItems.forEach(item => stage1Group.remove(item.mesh));
+            game.falling3DItems = [];
+        }
+
+        function startStage1() {
+            startGlobalTimer();
+            document.getElementById('s1-start-overlay').classList.add('hidden');
+            game.s1Running = true;
+            game.s1Herbs = 0;
+            game.s1TimeLeft = 30;
+            game.maomiX = 0;
+            game.maomiZ = 3.2;
+            document.getElementById('s1-herbs').textContent = '0 / 10';
+            document.getElementById('s1-timer').textContent = '30s';
+            playGuqinChord(['D4', 'F#4', 'A4']);
+
+            game.s1CountdownId = setInterval(() => {
+                game.s1TimeLeft--;
+                document.getElementById('s1-timer').textContent = `${game.s1TimeLeft}s`;
+                if (game.s1TimeLeft <= 0) {
+                    if (game.s1Herbs < 10) {
+                        game.squadHp = Math.max(50, game.squadHp - 20);
+                        updateGlobalHP();
+                    }
+                    playGuqinChord(['E4', 'B4', 'E5']);
+                    switchStage(2);
+                }
+            }, 1000);
+
+            const herbGeo = new THREE.OctahedronGeometry(0.35, 0);
+            const herbMat = new THREE.MeshStandardMaterial({ color: 0x34d399, emissive: 0x10b981, emissiveIntensity: 0.95 });
+            const sporeGeo = new THREE.IcosahedronGeometry(0.36, 0);
+            const sporeMat = new THREE.MeshStandardMaterial({ color: 0xf43f5e, emissive: 0xbe123c, emissiveIntensity: 0.9 });
+
+            game.s1SpawnId = setInterval(() => {
+                if (!game.s1Running) return;
+                const isToxic = Math.random() < 0.36;
+                const mesh = new THREE.Mesh(isToxic ? sporeGeo : herbGeo, isToxic ? sporeMat : herbMat);
+                const x = (Math.random() - 0.5) * 9.0;
+                const z = 1.2 + Math.random() * 3.6;
+                mesh.position.set(x, 7.2, z);
+                stage1Group.add(mesh);
+                game.falling3DItems.push({
+                    mesh,
+                    isToxic,
+                    speed: 0.065 + Math.random() * 0.035
+                });
+            }, 620);
+        }
+
+        /**
+         * ============================================================================
+         * 5. STAGE II: 3D HALL OF MYSTERIOUS AILMENTS (Jinka Medical Deduction)
+         * ============================================================================
+         */
+        const medicalCases = [
+            {
+                title: 'Affliction I: Stagnant Dark Pulse of the Northern Gate',
+                desc: 'A palace guard collapses with frost-rimed lips and a sluggish dark pulse after inhaling pale mist near the Serpent Altar. Which remedy restores his Yang Qi?',
+                options: [
+                    { label: 'Warming Ginger & Cinnamon Decoction', correct: true, note: 'Correct! Disperses cold mist and unblocks the stagnant meridian.' },
+                    { label: 'Ice-Water Cold Compress', correct: false, note: 'Incorrect! Extreme cold worsens frost stagnation (-20 Squad HP).' },
+                    { label: 'Raw Nightshade Tincture', correct: false, note: 'Incorrect! Toxic alkaloid deepens the paralysis (-20 Squad HP).' }
+                ]
+            },
+            {
+                title: 'Affliction II: Damp-Heat Miasma of the Outer Courtyard',
+                desc: 'Attendants suffer feverish restlessness and bitter mouth after incense laced with marsh spores burned in the hall. Select Jinka’s prescription:',
+                options: [
+                    { label: 'Heavy Mutton & Pepper Broth', correct: false, note: 'Incorrect! Excess heat fuels the Damp-Heat fever (-20 Squad HP).' },
+                    { label: 'Honeysuckle & Forsythia Detox Tea', correct: true, note: 'Correct! Clears Damp-Heat toxins and cools the blood.' },
+                    { label: 'Dried Scorpion Powder', correct: false, note: 'Incorrect! Harsh venom agitates feverish meridians (-20 Squad HP).' }
+                ]
+            },
+            {
+                title: 'Affliction III: Serpent Scale Neurotoxin',
+                desc: 'A scout grazed by a silver scale experiences numbness spreading toward the heart meridian. What emergency treatment halts the venom?',
+                options: [
+                    { label: 'Licorice Root & Mung Bean Antidote', correct: true, note: 'Correct! Neutralizes serpent neurotoxins and protects the heart!' },
+                    { label: 'Sweet Rice Wine', correct: false, note: 'Incorrect! Alcohol accelerates venom circulation (-20 Squad HP).' },
+                    { label: 'Cinnabar Incense Smoke', correct: false, note: 'Incorrect! Mercury fumes worsen neurological tremors (-20 Squad HP).' }
+                ]
+            }
+        ];
+
+        function loadStage2Case(idx) {
+            game.s2CaseIndex = idx;
+            const c = medicalCases[idx];
+            document.getElementById('s2-progress').textContent = `Case ${idx + 1} of ${medicalCases.length}`;
+            document.getElementById('s2-case-title').textContent = c.title;
+            document.getElementById('s2-case-desc').textContent = c.desc;
+
+            const feedback = document.getElementById('s2-feedback');
+            feedback.classList.add('hidden');
+
+            const container = document.getElementById('s2-options');
+            container.innerHTML = '';
+            c.options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = 'wuxia-btn p-3.5 rounded-2xl bg-slate-900/90 border border-indigo-400/40 hover:border-amber-300 text-left text-xs sm:text-sm font-semibold text-indigo-100';
+                btn.textContent = opt.label;
+                btn.onclick = () => handleStage2Choice(opt);
+                container.appendChild(btn);
+            });
+        }
+
+        function handleStage2Choice(opt) {
+            const feedback = document.getElementById('s2-feedback');
+            feedback.classList.remove('hidden');
+            jinkaStudy3D.lungeTimer = 1.0;
+
+            if (opt.correct) {
+                feedback.className = 'mt-3 p-2.5 rounded-xl text-xs font-medium bg-emerald-950/80 border border-emerald-400/50 text-emerald-200';
+                feedback.textContent = `✅ ${opt.note}`;
+                spawn3DBurst(new THREE.Vector3(0, 1.8, 0.5), 0x38bdf8, 30);
+                playGuqinChord(['D4', 'F#4', 'A4', 'D5']);
+            } else {
+                game.squadHp = Math.max(40, game.squadHp - 20);
+                updateGlobalHP();
+                feedback.className = 'mt-3 p-2.5 rounded-xl text-xs font-medium bg-rose-950/80 border border-rose-400/50 text-rose-200';
+                feedback.textContent = `⚠️ ${opt.note}`;
+                spawn3DBurst(new THREE.Vector3(0, 1.8, 0.5), 0xf43f5e, 24);
+                playGuqinChord(['C3', 'Eb3', 'G3']);
+            }
+
+            document.querySelectorAll('#s2-options button').forEach(b => b.disabled = true);
+
+            setTimeout(() => {
+                if (game.s2CaseIndex + 1 < medicalCases.length) {
+                    loadStage2Case(game.s2CaseIndex + 1);
+                } else {
+                    switchStage(3);
+                }
+            }, 1350);
+        }
+
+        /**
+         * ============================================================================
+         * 6. STAGE III: 3D ALTAR OF THE SERPENT (Boss Battle)
+         * ============================================================================
+         */
+        const enemyIntents = [
+            { name: 'Venomous Gale (24 DMG + Miasma)', dmg: 24, poison: 6 },
+            { name: 'Shattering Frost Coils (32 DMG)', dmg: 32, poison: 0 },
+            { name: 'Crimson Serpent Gaze (26 DMG + Miasma)', dmg: 26, poison: 5 }
+        ];
+
+        function initStage3Battle() {
+            game.enemyHp = 400;
+            game.enemyPoison = 0;
+            game.squadBarrier = 0;
+            game.squadMiasma = 0;
+            game.resonance = 0;
+            game.turn = 1;
+            game.intentIndex = 0;
+            game.isBusy = false;
+            updateStage3UI();
+        }
+
+        function updateStage3UI() {
+            updateGlobalHP();
+            const ePct = Math.max(0, (game.enemyHp / game.enemyMaxHp) * 100);
+            document.getElementById('enemy-hp-bar').style.width = `${ePct}%`;
+            document.getElementById('enemy-hp-text').textContent = `${Math.max(0, game.enemyHp)} / ${game.enemyMaxHp}`;
+
+            const pPct = Math.max(0, (game.squadHp / game.squadMaxHp) * 100);
+            document.getElementById('party-hp-bar').style.width = `${pPct}%`;
+            document.getElementById('party-hp-text').textContent = `${Math.max(0, game.squadHp)} / ${game.squadMaxHp}`;
+
+            document.getElementById('resonance-bar').style.width = `${game.resonance}%`;
+            document.getElementById('resonance-text').textContent = `${game.resonance} / 100%`;
+
+            const ultBtn = document.getElementById('ultimate-btn');
+            ultBtn.disabled = game.resonance < 100 || game.isBusy;
+
+            document.getElementById('turn-badge').textContent = `Turn ${game.turn}`;
+            document.getElementById('enemy-intent').textContent = enemyIntents[game.intentIndex % enemyIntents.length].name;
+
+            const tags = document.getElementById('enemy-status-tags');
+            tags.innerHTML = '';
+            if (game.enemyPoison > 0) {
+                tags.innerHTML += `<span class="px-1.5 py-0.5 rounded bg-pink-950 text-pink-300 border border-pink-500/40 text-[10px]">Antidote Burn ${game.enemyPoison}</span>`;
+            }
+            if (game.squadBarrier > 0) {
+                tags.innerHTML += `<span class="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-500/40 text-[10px]">Ward ${game.squadBarrier}</span>`;
+            }
+        }
+
+        function setLog(text) {
+            document.getElementById('battle-log').textContent = text;
+        }
+
+        function performSkill(skill) {
+            if (game.isBusy || game.enemyHp <= 0 || game.squadHp <= 0) return;
+
+            const bossTarget = new THREE.Vector3(0, 2.5, -5.0);
+
+            if (skill === 'decoction') {
+                game.squadMiasma = 0;
+                game.squadHp = Math.min(game.squadMaxHp, game.squadHp + 35);
+                game.resonance = Math.min(100, game.resonance + 35);
+                hero3D_Maomi.lungeTimer = 1.0;
+                spawn3DProjectile(new THREE.Vector3(-2.3, 1.5, 2.2), new THREE.Vector3(0, 1.8, 2.6), 0x34d399, 1.8);
+                spawn3DBurst(new THREE.Vector3(0, 1.4, 2.5), 0x34d399, 28);
+                playGuqinChord(['E4', 'G4', 'B4', 'D5']);
+                setLog('Maomi serves Herbal Decoction! +35 Squad HP restored & Venomous Miasma cleansed.');
+            }
+            else if (skill === 'needles') {
+                game.enemyHp -= 60;
+                game.resonance = Math.min(100, game.resonance + 35);
+                hero3D_Jinka.lungeTimer = 1.0;
+                spawn3DProjectile(new THREE.Vector3(0, 1.6, 2.9), bossTarget, 0xfbbf24, 1.2, () => {
+                    boss3D.hitTimer = 1.0;
+                    spawn3DBurst(bossTarget, 0x818cf8, 32);
+                });
+                playGuqinChord(['D4', 'F#4', 'A4', 'E5']);
+                setLog('Jinka fires Golden Meridian Needles! 60 precision Chi DMG pierces The White Lady!');
+            }
+            else if (skill === 'antidote') {
+                game.squadHp = Math.min(game.squadMaxHp, game.squadHp + 15);
+                game.squadBarrier += 25;
+                game.enemyHp -= 45;
+                game.enemyPoison += 10;
+                game.resonance = Math.min(100, game.resonance + 35);
+                hero3D_Laulan.lungeTimer = 1.0;
+                spawn3DProjectile(new THREE.Vector3(2.3, 1.6, 2.2), bossTarget, 0xf472b6, 1.6, () => {
+                    boss3D.hitTimer = 1.0;
+                    spawn3DBurst(bossTarget, 0xf472b6, 32);
+                });
+                playGuqinChord(['A4', 'C#5', 'E5', 'B5']);
+                setLog('Laulan unleashes Universal Antidote! +15 HP, +25 Lotus Ward & 45 DMG burns her scales!');
+            }
+            else if (skill === 'resonance') {
+                if (game.resonance < 100) return;
+                game.resonance = 0;
+                game.enemyHp -= 95;
+                game.squadHp = Math.min(game.squadMaxHp, game.squadHp + 20);
+                squad3D.forEach((h, idx) => {
+                    h.lungeTimer = 1.0;
+                    spawn3DProjectile(h.root.position.clone().add(new THREE.Vector3(0, 1.5, 0)), bossTarget, [0x34d399, 0x818cf8, 0xf472b6][idx], 2.2);
+                });
+                setTimeout(() => {
+                    boss3D.hitTimer = 1.2;
+                    spawn3DBurst(bossTarget, 0xfbbf24, 55);
+                }, 400);
+                playGuqinChord(['D4', 'A4', 'D5', 'F#5', 'A5'], '4n');
+                setLog('✨ TRI-QI RESONANCE! Maomi, Jinka & Laulan unleash 95 DMG of pure medicinal light!');
+            }
+
+            updateStage3UI();
+            if (checkWinLose()) return;
+
+            game.isBusy = true;
+            setTimeout(executeWhiteLadyTurn, 1150);
+        }
+
+        function executeWhiteLadyTurn() {
+            if (game.enemyPoison > 0) {
+                game.enemyHp -= game.enemyPoison;
+                spawn3DBurst(new THREE.Vector3(0, 2.5, -5.0), 0xf472b6, 18);
+                if (checkWinLose()) {
+                    game.isBusy = false;
+                    updateStage3UI();
+                    return;
+                }
+            }
+
+            const intent = enemyIntents[game.intentIndex % enemyIntents.length];
+            let incoming = intent.dmg;
+            if (game.squadBarrier > 0) {
+                const absorbed = Math.min(game.squadBarrier, incoming);
+                game.squadBarrier -= absorbed;
+                incoming -= absorbed;
+            }
+            game.squadHp -= incoming;
+            if (intent.poison > 0) game.squadMiasma += intent.poison;
+            if (game.squadMiasma > 0) game.squadHp -= game.squadMiasma;
+
+            boss3D.lungeTimer = 1.0;
+            spawn3DProjectile(new THREE.Vector3(0, 2.6, -4.8), new THREE.Vector3(0, 1.4, 2.5), 0x38bdf8, 1.5, () => {
+                spawn3DBurst(new THREE.Vector3(0, 1.4, 2.5), 0x38bdf8, 30);
+            });
+            playGuqinChord(['C3', 'G3', 'Eb4'], '4n');
+            setLog(`The White Lady unleashes ${intent.name}! Squad takes ${incoming} DMG.`);
+
+            game.turn++;
+            game.intentIndex++;
+            game.isBusy = false;
+            updateStage3UI();
+            checkWinLose();
+        }
+
+        function checkWinLose() {
+            if (game.enemyHp <= 0) {
+                clearInterval(game.timerInterval);
+                game.timerInterval = null;
+                showEndgameModal(true);
+                return true;
+            }
+            if (game.squadHp <= 0) {
+                clearInterval(game.timerInterval);
+                game.timerInterval = null;
+                showEndgameModal(false);
+                return true;
+            }
+            return false;
+        }
+
+        function showEndgameModal(victory) {
+            const modal = document.getElementById('endgame-modal');
+            modal.classList.remove('hidden');
+
+            const hpLeft = Math.max(0, game.squadHp);
+            const mins = String(Math.floor(game.elapsedSeconds / 60)).padStart(2, '0');
+            const secs = String(game.elapsedSeconds % 60).padStart(2, '0');
+            const speedBonus = Math.max(0, 600 - game.elapsedSeconds * 3);
+            const totalScore = victory ? (hpLeft * 10 + speedBonus + 500) : (hpLeft * 5 + 150);
+
+            document.getElementById('endgame-icon').textContent = victory ? '🏆' : '🌫️';
+            document.getElementById('endgame-title').textContent = victory ? 'Ultimate Panacea Claimed!' : 'Overwhelmed by Frost Miasma';
+            document.getElementById('endgame-desc').textContent = victory
+                ? 'Maomi, Jinka, and Laulan harmonized their medical arts to pacify The White Lady and secure the Ultimate Panacea!'
+                : 'The White Lady’s venomous gales froze the courtyard. Regroup your Tri-Apothecary squad and try again!';
+
+            document.getElementById('score-hp').textContent = `${hpLeft} / ${game.squadMaxHp}`;
+            document.getElementById('score-time').textContent = `${mins}:${secs}`;
+            document.getElementById('score-total').textContent = `${totalScore} pts`;
+        }
+
+        function resetFullChallenge() {
+            document.getElementById('endgame-modal').classList.add('hidden');
+            clearInterval(game.timerInterval);
+            game.timerInterval = null;
+            game.elapsedSeconds = 0;
+            game.squadHp = 200;
+            document.getElementById('run-timer').textContent = '00:00';
+            updateGlobalHP();
+            switchStage(1);
+        }
+
+        // Modal Handlers
+        const loreModal = document.getElementById('lore-modal');
+        document.getElementById('lore-btn').addEventListener('click', () => loreModal.classList.remove('hidden'));
+        function closeLoreModal() { loreModal.classList.add('hidden'); }
+        document.getElementById('close-lore').addEventListener('click', closeLoreModal);
+        loreModal.addEventListener('click', (e) => { if (e.target === loreModal) closeLoreModal(); });
+
+        /**
+         * ============================================================================
+         * 7. MAIN 3D RENDER & ARTICULATED SKELETAL ANIMATION LOOP
+         * ============================================================================
+         */
+        const clock = new THREE.Clock();
+
+        function animateHeroRig(rig, t) {
+            // Breathing & gentle idle sway
+            rig.bodyPivot.position.y = 0.85 + Math.sin(t * 2.6 + rig.phase) * 0.025;
+            rig.headGroup.rotation.y = Math.sin(t * 1.4 + rig.phase) * 0.08;
+            rig.aura.rotation.z = t * 0.8 + rig.phase;
+
+            // Lunge forward animation when casting a skill
+            if (rig.lungeTimer > 0) {
+                rig.lungeTimer = Math.max(0, rig.lungeTimer - 0.035);
+                const lungeArc = Math.sin(rig.lungeTimer * Math.PI);
+                rig.root.position.z = rig.basePos.z - lungeArc * 0.95;
+                rig.root.position.y = rig.basePos.y + lungeArc * 0.35;
+                rig.rightArm.rotation.x = -0.8 - lungeArc * 0.8;
+            } else {
+                rig.root.position.lerp(rig.basePos, 0.15);
+                rig.leftArm.rotation.z = 0.15 + Math.sin(t * 2.5 + rig.phase) * 0.06;
+                rig.rightArm.rotation.z = -0.15 - Math.sin(t * 2.5 + rig.phase) * 0.06;
+            }
+        }
+
+        function animate3DScene() {
+            requestAnimationFrame(animate3DScene);
+            const t = clock.getElapsedTime();
+
+            // Smooth Camera Orbit & Stage Framing
+            const targetCamPos = new THREE.Vector3();
+            const lookTarget = new THREE.Vector3();
+            if (game.currentStage === 1) {
+                targetCamPos.set(Math.sin(camYaw) * 9.5 * camZoom, (3.8 + camPitch * 5) * camZoom, 10.2 * Math.cos(camYaw) * camZoom);
+                lookTarget.set(0, 1.4, 2.5);
+            } else if (game.currentStage === 2) {
+                targetCamPos.set(Math.sin(camYaw) * 6.5 * camZoom, (2.8 + camPitch * 4) * camZoom, 6.5 * Math.cos(camYaw) * camZoom);
+                lookTarget.set(0, 1.6, 0.5);
+            } else {
+                targetCamPos.set(Math.sin(camYaw) * 11.5 * camZoom, (4.6 + camPitch * 6) * camZoom, 10.5 * Math.cos(camYaw) * camZoom);
+                lookTarget.set(0, 1.6, -1.5);
+            }
+            camera.position.lerp(targetCamPos, 0.08);
+            camera.lookAt(lookTarget);
+
+            // Stage I: Maomi 3D Running (X & Z Depth) & Falling Herbs Physics
+            if (game.currentStage === 1) {
+                const isMoving = game.s1Running && (game.moveDir !== 0 || game.moveZDir !== 0);
+                if (isMoving) {
+                    game.maomiX = Math.max(-4.6, Math.min(4.6, game.maomiX + game.moveDir * 0.14));
+                    game.maomiZ = Math.max(1.0, Math.min(4.8, game.maomiZ + game.moveZDir * 0.12));
+                    maomiRunner3D.root.position.set(game.maomiX, 0, game.maomiZ);
+                    maomiRunner3D.root.rotation.y = Math.atan2(game.moveDir, game.moveZDir);
+                    // Striding legs & swinging arms
+                    maomiRunner3D.leftLeg.rotation.x = Math.sin(t * 16) * 0.65;
+                    maomiRunner3D.rightLeg.rotation.x = -Math.sin(t * 16) * 0.65;
+                } else {
+                    maomiRunner3D.root.rotation.y = THREE.MathUtils.lerp(maomiRunner3D.root.rotation.y, 0, 0.12);
+                    maomiRunner3D.leftLeg.rotation.x = THREE.MathUtils.lerp(maomiRunner3D.leftLeg.rotation.x, 0, 0.15);
+                    maomiRunner3D.rightLeg.rotation.x = THREE.MathUtils.lerp(maomiRunner3D.rightLeg.rotation.x, 0, 0.15);
+                }
+
+                // Update falling 3D herbs & spores with full 3D X/Y/Z basket collision
+                for (let i = game.falling3DItems.length - 1; i >= 0; i--) {
+                    const item = game.falling3DItems[i];
+                    item.mesh.position.y -= item.speed;
+                    item.mesh.rotation.y += 0.04;
+                    item.mesh.rotation.x += 0.02;
+
+                    const dx = Math.abs(item.mesh.position.x - game.maomiX);
+                    const dz = Math.abs(item.mesh.position.z - game.maomiZ);
+                    if (item.mesh.position.y <= 1.6 && item.mesh.position.y >= 0.4 && dx < 1.15 && dz < 1.15) {
+                        if (item.isToxic) {
+                            game.squadHp = Math.max(40, game.squadHp - 25);
+                            updateGlobalHP();
+                            spawn3DBurst(item.mesh.position, 0xf43f5e, 18);
+                            playGuqinChord(['C3', 'Eb3'], '16n');
+                        } else {
+                            game.s1Herbs++;
+                            document.getElementById('s1-herbs').textContent = `${game.s1Herbs} / 10`;
+                            spawn3DBurst(item.mesh.position, 0x34d399, 18);
+                            playGuqinChord(['G4', 'B4'], '16n');
+                            if (game.s1Herbs >= 10) {
+                                stopStage1Loops();
+                                switchStage(2);
+                                break;
+                            }
+                        }
+                        stage1Group.remove(item.mesh);
+                        game.falling3DItems.splice(i, 1);
+                        continue;
+                    }
+
+                    if (item.mesh.position.y < -0.5) {
+                        stage1Group.remove(item.mesh);
+                        game.falling3DItems.splice(i, 1);
+                    }
+                }
+            }
+
+            // Stage II: Jinka & Orbiting Medicinal Crystals
+            if (game.currentStage === 2) {
+                animateHeroRig(jinkaStudy3D, t);
+                studyCrystals.forEach((c, idx) => {
+                    const ang = t * 1.1 + (idx / studyCrystals.length) * Math.PI * 2;
+                    c.position.set(Math.cos(ang) * 2.2, 1.5 + Math.sin(t * 2 + idx) * 0.25, 0.5 + Math.sin(ang) * 2.2);
+                    c.rotation.y = t * 1.5;
+                });
+            }
+
+            // Stage III: Altar of the Serpent Showdown Animations
+            if (game.currentStage === 3) {
+                squad3D.forEach(hero => animateHeroRig(hero, t));
+
+                // Panacea Elixir Float
+                panaceaBottle.position.y = 1.68 + Math.sin(t * 3.0) * 0.12;
+                panaceaBottle.rotation.y = t * 1.2;
+
+                // Swaying Palace Lanterns
+                lanterns3D.forEach((l, i) => {
+                    l.rotation.z = Math.sin(t * 2.2 + i) * 0.08;
+                });
+
+                // The White Lady Coiling Serpent Animation
+                boss3D.root.position.y = 1.55 + Math.sin(t * 2.1) * 0.14;
+                if (boss3D.lungeTimer > 0) {
+                    boss3D.lungeTimer = Math.max(0, boss3D.lungeTimer - 0.03);
+                    boss3D.root.position.z = -5.0 + Math.sin(boss3D.lungeTimer * Math.PI) * 1.6;
+                } else {
+                    boss3D.root.position.z = -5.0;
+                }
+                if (boss3D.hitTimer > 0) {
+                    boss3D.hitTimer = Math.max(0, boss3D.hitTimer - 0.05);
+                    boss3D.root.position.x = Math.sin(boss3D.hitTimer * 40) * 0.25;
+                } else {
+                    boss3D.root.position.x = 0;
+                }
+                boss3D.tailSegments.forEach((seg, idx) => {
+                    seg.position.x = Math.sin(t * 2.8 + idx * 0.55) * (0.65 - idx * 0.02);
+                });
+            }
+
+            // Ambient Sakura & Spirit Qi Drift
+            const posAttr = ambientParticles3D.geometry.attributes.position;
+            for (let i = 0; i < particleCount; i++) {
+                let y = posAttr.getY(i) - 0.015;
+                let x = posAttr.getX(i) + Math.sin(t + i) * 0.006;
+                if (y < 0) y = 9;
+                posAttr.setY(i, y);
+                posAttr.setX(i, x);
+            }
+            posAttr.needsUpdate = true;
+
+            // 3D Flying Skill Projectiles
+            for (let i = projectile3DList.length - 1; i >= 0; i--) {
+                const p = projectile3DList[i];
+                p.progress += p.speed;
+                const alpha = Math.min(1, p.progress);
+                p.mesh.position.lerpVectors(p.start, p.end, alpha);
+                p.mesh.position.y += Math.sin(alpha * Math.PI) * p.arcHeight;
+                p.mesh.rotation.x += 0.15;
+                p.mesh.rotation.y += 0.2;
+                if (alpha >= 1) {
+                    if (p.onArrive) p.onArrive();
+                    scene.remove(p.mesh);
+                    projectile3DList.splice(i, 1);
+                }
+            }
+
+            // 3D Skill Burst Particles
+            for (let i = burst3DList.length - 1; i >= 0; i--) {
+                const b = burst3DList[i];
+                b.mesh.position.add(b.vel);
+                b.vel.y -= 0.008;
+                b.life -= 0.03;
+                b.mesh.scale.setScalar(Math.max(0.01, b.life));
+                if (b.life <= 0) {
+                    scene.remove(b.mesh);
+                    burst3DList.splice(i, 1);
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Boot 3D Experience on Load
+        window.onload = () => {
+            updateGlobalHP();
+            switchStage(1);
+            animate3DScene();
+        };
+    </script>
+</body>
+</html>

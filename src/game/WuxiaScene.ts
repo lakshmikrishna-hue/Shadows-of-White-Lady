@@ -380,10 +380,10 @@ export class WuxiaCourtyardEngine {
 
     this.syncBodyState();
     this.emitSnapshot();
-    this.camera.position.set(0, 4.9, 13.8);
-    this.camera.lookAt(0, 1.85, -2.0);
+    this.camera.position.set(0, 3.85, 12.4);
+    this.camera.lookAt(0, 1.55, -1.6);
     this.camPos.copy(this.camera.position);
-    this.camLook.set(0, 1.85, -2.0);
+    this.camLook.set(0, 1.55, -1.6);
     this.renderer.render(this.scene, this.camera);
     this.startLoop();
   }
@@ -779,10 +779,10 @@ export class WuxiaCourtyardEngine {
 
     if (this.phase === 'title') {
       this.titleOrbitAngle += dt * 0.2;
-      const desiredX = Math.sin(this.titleOrbitAngle) * 5.8;
-      const desiredZ = 12.6 + Math.cos(this.titleOrbitAngle) * 1.4;
-      _v1.set(desiredX, 4.9, desiredZ);
-      _v2.set(0, 1.85, -2.0);
+      const desiredX = Math.sin(this.titleOrbitAngle) * 4.4;
+      const desiredZ = 11.6 + Math.cos(this.titleOrbitAngle) * 1.1;
+      _v1.set(desiredX, 3.85, desiredZ);
+      _v2.set(0, 1.55, -1.6);
       const alpha = 1 - Math.exp(-3.5 * dt);
       this.camPos.lerp(_v1, alpha);
       this.camLook.lerp(_v2, alpha);
@@ -1015,18 +1015,32 @@ export class WuxiaCourtyardEngine {
       rig.leftLeg.rotation.x = stride;
       rig.rightLeg.rotation.x = -stride;
 
+      const baseRightX = rig.idleRightArmX ?? -0.15;
+      const baseRightZ = rig.idleRightArmZ ?? 0.08;
+      const baseLeftX = rig.idleLeftArmX ?? -0.15;
+      const baseLeftZ = rig.idleLeftArmZ ?? -0.08;
+
       if (pos.swingTimer > 0) {
         pos.swingTimer = Math.max(0, pos.swingTimer - dt);
         rig.rightArm.rotation.x = -Math.sin((pos.swingTimer / 0.24) * Math.PI) * 1.5;
+        rig.rightArm.rotation.z = baseRightZ;
       } else {
-        rig.rightArm.rotation.x = -stride * 0.4;
+        rig.rightArm.rotation.x = baseRightX - stride * 0.35;
+        rig.rightArm.rotation.z = baseRightZ + Math.sin(t * 2.1 + idx) * 0.04;
       }
-      rig.leftArm.rotation.x = stride * 0.4;
+      rig.leftArm.rotation.x = baseLeftX + stride * 0.35;
+      rig.leftArm.rotation.z = baseLeftZ - Math.sin(t * 2.1 + idx) * 0.04;
+
+      // Sway hair strands, silk waist ribbons & Qi aura spirals
+      rig.flowParts?.forEach((fp, fIdx) => {
+        fp.rotation.z = Math.sin(t * 2.8 + fIdx * 0.9 + idx) * 0.06;
+        fp.rotation.x = Math.cos(t * 2.2 + fIdx * 0.7) * 0.04;
+      });
 
       // Orbit Jinka's floating scrolls
       rig.orbiters.forEach((orb, oIdx) => {
         const ang = t * 1.8 + (oIdx / rig.orbiters.length) * Math.PI * 2;
-        orb.position.set(Math.cos(ang) * 0.72, 1.08 + Math.sin(t * 2.5 + oIdx) * 0.14, Math.sin(ang) * 0.72);
+        orb.position.set(Math.cos(ang) * 0.76, 1.12 + Math.sin(t * 2.5 + oIdx) * 0.14, Math.sin(ang) * 0.76);
         orb.rotation.y = -ang + Math.PI / 2;
       });
     });
@@ -1359,6 +1373,9 @@ export class WuxiaCourtyardEngine {
   private updateEnemyVisualsOnly(dt: number, elapsed: number): void {
     for (const en of this.enemies) {
       en.rig.root.position.set(en.x, 0, en.z);
+      en.rig.flowParts?.forEach((fp, fIdx) => {
+        fp.rotation.z = Math.sin(elapsed * 3.1 + fIdx * 0.8) * 0.07;
+      });
       if (en.policy === 'whitelady') {
         en.rig.bodyGroup.position.y = 0.45 + Math.sin(elapsed * 2.2) * 0.2;
         en.rig.orbiters.forEach((c, idx) => {
@@ -1524,6 +1541,9 @@ export class WuxiaCourtyardEngine {
 
       // Apply rig position & limb motion
       en.rig.root.position.set(en.x, 0, en.z);
+      en.rig.flowParts?.forEach((fp, fIdx) => {
+        fp.rotation.z = Math.sin(elapsed * 3.2 + fIdx * 0.85) * 0.07;
+      });
       if (en.policy === 'whitelady') {
         en.rig.bodyGroup.position.y = 0.45 + Math.sin(elapsed * 2.2) * 0.2;
         en.rig.orbiters.forEach((c, idx) => {
@@ -1686,11 +1706,13 @@ export class WuxiaCourtyardEngine {
       if ((obj as THREE.Mesh).isMesh) {
         const mesh = obj as THREE.Mesh;
         mesh.geometry?.dispose();
-        if (Array.isArray(mesh.material)) {
-          mesh.material.forEach((m) => m.dispose());
-        } else {
-          mesh.material?.dispose();
-        }
+        const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        mats.forEach((m) => {
+          if (!m) return;
+          const std = m as THREE.MeshStandardMaterial;
+          std.map?.dispose();
+          m.dispose();
+        });
       }
     });
     this.textures.stoneColor.dispose();
